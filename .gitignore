@@ -2,22 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
+# C extensions
 *.egg-info/
 .installed.cfg
 *.egg
@@ -84,8 +71,8 @@ ipython_config.py
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having trouble syncing your environment, include Pipfile.lock
-#   in .gitignore instead of repo.
+#   However, in case of collaboration, if having trouble syncing your environment,
+#   include Pipfile.lock in .gitignore instead of repo.
 
 #   .venv
 #   Pipfile.lock
@@ -121,22 +108,18 @@ pipenv_run.log
 .streamlit/
 streamlit.log
 
-# Data Files (Large/Generated)
-*.csv  # Exclude knowledge base CSVs; commit a sample if needed
-faiss_index/  # FAISS vector store
-*.pkl  # Pickles (e.g., cached models)
-*.pdf  # Raw PDFs; process and commit chunks only
+# RAG/ML Project Data (Generated Files)
+educational_knowledge_base.csv  # Knowledge base CSV; commit a sample if needed
+evaluation_results_detailed.csv # Evaluation outputs
+faiss_index/                    # FAISS vector store
+*.pkl                           # Pickled models/caches
+shap_plots/                     # SHAP-generated images (if any)
 
-# Logs
-*.log
+# PDFs and Temp Files
+*.pdf                           # Raw PDF textbooks
+temp_uploads/                   # Temporary upload directories from app
+*.tmp                           # Temp files
+
+# Logs and Outputs
 logs/
-!.gitkeep  # Keep empty logs/ dir if needed
-
-# OS Generated
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+*.log
