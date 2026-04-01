@@ -1,138 +1,192 @@
-# RAG Educational Assistant 
+# Explainable RAG For Educational Q A
 
-A **Retrieval-Augmented Generation (RAG)** web app built with Streamlit for querying educational PDFs (e.g., textbooks). It processes documents into a searchable knowledge base, retrieves relevant chunks using hybrid search (BM25 + FAISS + RRF), generates answers with Ollama LLM, and provides reliability metrics (faithfulness, plausibility) plus SHAP explainability.
-
-Perfect for students/teachers: Upload PDFs, ask questions, get cited answers with confidence scores. No cloud costs—runs locally!
+A cutting-edge **Retrieval-Augmented Generation (RAG)** system designed specifically for educational purposes. EduRAG processes textbooks, research papers, and lecture materials to create a searchable knowledge base that powers intelligent question-answering with advanced explainability features.
 
 ## 🎯 Key Features
-- **PDF Knowledge Base Builder**: Chunk and index textbooks into a CSV-based vector store (handles duplicates, headers/footers).
-- **Hybrid Retrieval**: Combines keyword (BM25) + semantic (FAISS embeddings) search with reciprocal rank fusion (RRF) and embedding reranking.
-- **LLM-Powered QA**: Uses Ollama (e.g., DeepSeek-R1:1.5B) for concise, context-grounded answers.
-- **Reliability Dashboard**: Real-time scores for faithfulness (BERTScore), plausibility (LLM-judged), and retrieval quality (cosine sim).
-- **Explainability**: SHAP values explain why certain chunks were prioritized (student-friendly + dev breakdowns).
-- **Batch Evaluation**: Automated testing with NLP metrics (BERTScore, ROUGE, BLEU) on a QA dataset.
-- **Streamlit UI**: Two tabs—QA chat + document uploader. Responsive and intuitive.
 
-| Feature | Benefit |
-|---------|---------|
-| Local-First | Privacy-focused; no API keys needed beyond Ollama. |
-| Extensible | Easy to swap LLMs/embeddings; add more metrics. |
-| Efficient | Processes 100+ page PDFs in minutes. |
+### 🧠 Intelligent Retrieval
+- **Hybrid Search Engine**: Combines BM25 keyword matching with dense semantic embeddings (BGE)
+- **Reciprocal Rank Fusion**: Optimally blends different retrieval strategies
+- **Cross-Encoder Reranking**: Ensures highest relevance for top results
+- **Hypothetical Document Embeddings (HyDE)**: Improves retrieval for complex queries
+
+### 🤖 Advanced AI Generation
+- **Strict Grounding**: Answers based only on retrieved evidence
+- **Citation Tracking**: Every claim is properly sourced [1], [2], etc.
+- **Hallucination Detection**: Identifies ungrounded statements automatically
+
+### 🔍 Comprehensive Explainability
+- **Evidence Attribution**: Shows which sources contributed most to the answer
+- **Token-Level Grounding**: Highlights grounded vs. ungrounded words in answers
+- **Source Consensus Analysis**: Detects conflicting information in sources
+- **Citation Validation**: Ensures all citations point to actual retrieved content
+
+### 🖼️ Multimodal Support
+- **Visual Content Processing**: Extracts and describes diagrams, charts, and images
+- **Table Recognition**: Converts complex tables to searchable content
+- **Document Structure Preservation**: Maintains chapters, sections, and hierarchies
+
+### 📊 Evaluation & Benchmarking
+- **Automated Ground Truth Generation**: Creates evaluation datasets from knowledge base
+- **Comprehensive Metrics**: BERTScore, ROUGE, Faithfulness, and Retrieval scores
+- **Citation Quality Analysis**: Measures precision and recall of citations
 
 ## 🏗️ Architecture Overview
-User Query → HybridRetriever (BM25 + FAISS + RRF + Embedding Rerank + SHAP)
 
-↓
-
-Context Stuffing → Ollama LLM (Prompt: QA_TEMPLATE) → Cleaned Answer
-
-↓
-
-Metrics: Faithfulness (BERTScore vs. Context) + Plausibility (LLM Score) + Retrieval Sim
-
-↓
-
-UI: Answer + Interpretation + Metrics + Sources + SHAP Explainer
-
-
-- **Core Files**:
-  - `app.py`: Streamlit frontend (QA tab + uploader).
-  - `main_rag_app.py`: RAG pipeline (retriever, chain, metrics, SHAP).
-  - `textbook_preprocessor_with_indexes.py`: PDF extraction (PyMuPDF/pdfplumber), cleaning, chunking (sentence-aware, ~1000 chars).
-  - `evaluation.py`: Batch eval script (uses `evaluate` lib for NLP scores).
-- **Data Flow**: PDFs → Chunks (CSV: `knowledge_base.csv`) → Indexing → Retrieval → Generation.
+```
+User Query → HybridRetriever (BM25 + FAISS + RRF + Reranker + HyDE)
+     ↓
+Evidence Documents → Cross-Encoder Attribution & Token Grounding
+     ↓
+Strict Grounding Prompt → Ollama LLM (DeepSeek R1 8B)
+     ↓
+Answer + Citations + Explainability Metrics
+```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.10+.
-- [Ollama](https://ollama.com) installed and running (local LLM server).
-- Git.
+- Python 3.10+
+- [Ollama](https://ollama.com/) installed and running
+- Git
 
 ### Installation
-1. Clone the repo:
-   - git clone https://github.com/yourusername/rag-educational-assistant.git
-   - cd rag-educational-assistant
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/edurag.git
+cd edurag
 
-2. Create a virtual environment (recommended):
-   - python -m venv venv
-   - source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-3. Install dependencies:
-    - pip install -r requirements.txt
-      
-    *Note*: This includes LangChain, FAISS, SHAP, Evaluate, and PDF libs. If you hit CUDA issues (e.g., for Torch), use CPU versions or install CUDA toolkit.
+# Install dependencies
+pip install -r requirements.txt
+```
 
-4. Set up Ollama:
-   - Download/run Ollama: `ollama serve`.
-   - Pull the model: `ollama pull deepseek-r1:1.5b` (or your preferred; edit in `main_rag_app.py`).
-   - Ensure it's running on `http://localhost:11434`.
+### Setup Models
+```bash
+# Pull required Ollama models
+ollama pull deepseek-r1:8b
+ollama pull deepseek-r1:1.5b
+ollama pull llava-phi3
+```
 
-5. Configure (optional):
-   - Copy `.env.example` to `.env` and edit (e.g., `HF_EMBEDDING_MODEL=all-MiniLM-L6-v2` for SentenceTransformers).
+### Run the Application
+```bash
+# Start the Streamlit interface
+streamlit run app.py
+```
 
-### Running the App
-1. Process sample PDFs (if you have a `textbooks/` folder):
-   python textbook_preprocessor_with_indexes.py --textbooks-dir textbooks --output educational_knowledge_base.csv
-   *This builds `educational_knowledge_base.csv` with indexed chunks.*
+## 📚 Usage Guide
 
-2. Launch the Streamlit app: streamlit run app.py
-   - Open `http://localhost:8501`.
-   - **QA Tab**: Ask questions (e.g., "What is photosynthesis?").
-   - **Uploader Tab**: Add new PDFs; restart app after processing.
+### 1. Building Your Knowledge Base
+Place your educational materials (PDFs, DOCX, PPTX) in a folder and process them:
 
-### Evaluation
-1. Prepare `evaluation_dataset.csv` (columns: `query`, `answer`—ground truth QA pairs).
-2. Run: python evaluation.py
-3. Outputs: Console summary + `evaluation_results_detailed.csv` with per-query scores.
+```bash
+python ingestion.py
+```
 
-## 📊 Example Usage
-- **Query**: "Explain Newton's laws."
-- **Output**:
-- **Answer**: "Newton's first law states that an object at rest stays at rest... [3 sentences]."
-- **Reliability**: "Highly reliable (avg score: 0.85)."
-- **Metrics**: Faithfulness: 0.92 | Plausibility: 0.88 | Retrieval: 0.90.
-- **SHAP**: "Chunk X influenced most due to direct keyword match."
-- **Sources**: Snippets from `physics_textbook.pdf` (Page 45, Chunk ID: physics_001).
+Or use the Upload Sources tab in the web interface.
 
-Demo GIF: [Insert your screen recording here via GitHub upload].
+### 2. Generating Evaluation Dataset
+Create ground truth QA pairs for benchmarking:
 
-## 🔧 Troubleshooting
-- **Ollama Errors**: Check `ollama list`; ensure model is pulled and server runs.
-- **Import Failures**: Run `pip install -r requirements.txt --upgrade`; verify Torch/FAISS CPU compat.
-- **PDF Processing Slow**: Use fewer pages or switch to PyMuPDF (faster than pdfplumber).
-- **No Chunks in KB**: Ensure PDFs aren't scanned images (needs OCR—future enhancement).
-- **SHAP Slow**: Disable with `EXPLAIN_WITH_SHAP=False` in `main_rag_app.py`.
-- **Metrics Zero**: Install `evaluate` datasets: `pip install datasets`.
+```bash
+python generate_ground_truth.py
+```
 
-Common Issues Table:
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| "CSV not found" | No KB built | Run preprocessor first. |
-| Low Faithfulness | Weak embeddings | Try `all-mpnet-base-v2`. |
-| App Crashes on Upload | Large PDF | Increase Streamlit timeout or chunk size. |
+### 3. Running Evaluations
+Benchmark your system performance:
+
+```bash
+python evaluation.py
+```
+
+### 4. Command-Line Interface
+Test the system directly in terminal:
+
+```bash
+python main_rag.py
+```
+
+## 🎛️ Web Interface Features
+
+### 📚 QA Assistant Tab
+- Natural language questioning with citation-grounded answers
+- Real-time reliability scoring and metrics
+- Evidence attribution visualization
+- Token grounding heatmap
+- Visual content display
+
+### ⬆️ Upload Sources Tab
+- Multi-format document processing (PDF, DOCX, PPTX)
+- Automatic visual content extraction and description
+- Incremental knowledge base updates
+- Duplicate detection and prevention
+
+### 🔍 Knowledge Map Tab
+- Interactive exploration of processed documents
+- Section navigation and content preview
+- Visual content gallery
+- Direct image viewing
+
+## 📊 Performance Metrics
+
+EduRAG provides comprehensive evaluation including:
+
+| Category | Metric | Description |
+|----------|--------|-------------|
+| **Retrieval** | MRR, Recall@1, Recall@5 | How well sources are found |
+| **Generation** | BERTScore, ROUGE-L, F1 | Answer quality and accuracy |
+| **Grounding** | Faithfulness, Citation Validity | Trustworthiness measures |
+| **Explainability** | Token Grounding Ratio | How much of answer is verifiable |
+
+## 🔧 Configuration Options
+
+### Model Selection
+- Primary LLM: `deepseek-r1:8b` (high quality)
+- Fallback LLM: `deepseek-r1:1.5b` (resource efficient)
+- Vision Model: `llava-phi3` (image description)
+- Embeddings: `BAAI/bge-small-en-v1.5`
+
+### Adjustable Parameters
+- Chunk size and overlap
+- Retrieval depth (top-k)
+- HyDE activation
+- VLM processing for images
+
+## 🛡️ Privacy & Security
+
+- **Local Processing**: All computations happen on your machine
+- **No Cloud Dependencies**: Except for optional Ollama models
+- **Data Control**: Full ownership of your educational materials
+- **Secure Storage**: Knowledge base stored locally in CSV format
 
 ## 🤝 Contributing
-1. Fork the repo.
-2. Create a feature branch: `git checkout -b feature/amazing-feature`.
-3. Commit: `git commit -m "Add amazing feature"`.
-4. Push: `git push origin feature/amazing-feature`.
-5. Open a Pull Request.
 
-Guidelines:
-- Follow PEP8 (use Black: `pip install black; black .`).
-- Add tests for new features.
-- Update README with examples.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
-MIT License—feel free to use/modify/share. See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
-- [LangChain](https://langchain.com) for RAG primitives.
-- [Ollama](https://ollama.com) for local inference.
-- [Streamlit](https://streamlit.io) for the slick UI.
-- Inspired by educational tools like Khan Academy + Perplexity AI.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Questions? Open an [issue](https://github.com/yourusername/rag-educational-assistant/issues) or DM me!
+## 🙏 Acknowledgements
 
-⭐ Star if this helps your studies! 🌟
+- [Docling](https://ds4sd.github.io/docling/) for document parsing
+- [Ollama](https://ollama.com/) for local LLM inference
+- [LangChain](https://langchain.com/) for RAG framework
+- [Streamlit](https://streamlit.io/) for web interface
+- [Hugging Face](https://huggingface.co/) for embedding models
+
+## 📞 Support
+
+For issues, questions, or feature requests, please open an issue on GitHub.
+
+---
+
+*EduRAG transforms educational materials into an interactive, explorable knowledge base with state-of-the-art AI capabilities while maintaining complete privacy and control over your data.*
