@@ -123,3 +123,5 @@ temp_uploads/                   # Temporary upload directories from app
 # Logs and Outputs
 logs/
 *.log
+
+project_data/
