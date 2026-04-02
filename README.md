@@ -1,5 +1,7 @@
 # Explainable RAG For Educational Q A
 
+Final year research project — currently in active development. Expected completion: May 2026
+
 A cutting-edge **Retrieval-Augmented Generation (RAG)** system designed specifically for educational purposes. EduRAG processes textbooks, research papers, and lecture materials to create a searchable knowledge base that powers intelligent question-answering with advanced explainability features.
 
 ## 🎯 Key Features
