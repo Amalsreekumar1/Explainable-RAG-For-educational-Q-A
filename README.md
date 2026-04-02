@@ -55,8 +55,8 @@ Answer + Citations + Explainability Metrics
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/Amalsreekumar1/edurag.git
-cd edurag
+git clone https://github.com/Amalsreekumar1/Explainable-RAG-For-educational-Q-A.git
+cd Explainable-RAG-For-educational-Q-A
 
 # Create virtual environment (recommended)
 python -m venv venv
