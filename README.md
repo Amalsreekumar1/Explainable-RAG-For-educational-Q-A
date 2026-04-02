@@ -55,7 +55,7 @@ Answer + Citations + Explainability Metrics
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/edurag.git
+git clone https://github.com/Amalsreekumar1/edurag.git
 cd edurag
 
 # Create virtual environment (recommended)
