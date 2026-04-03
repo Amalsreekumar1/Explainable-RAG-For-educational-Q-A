@@ -1,194 +1,202 @@
-# Explainable RAG For Educational Q A
+# EduRAG — Explainable Retrieval-Augmented Generation for Education
 
-Final year research project — currently in active development. Expected completion: May 2026
+> A research-grade RAG system built for educational Q&A with full explainability — citation grounding, token-level attribution, and hallucination detection.
 
-A cutting-edge **Retrieval-Augmented Generation (RAG)** system designed specifically for educational purposes. EduRAG processes textbooks, research papers, and lecture materials to create a searchable knowledge base that powers intelligent question-answering with advanced explainability features.
+---
 
-## 🎯 Key Features
+## What It Does
 
-### 🧠 Intelligent Retrieval
-- **Hybrid Search Engine**: Combines BM25 keyword matching with dense semantic embeddings (BGE)
-- **Reciprocal Rank Fusion**: Optimally blends different retrieval strategies
-- **Cross-Encoder Reranking**: Ensures highest relevance for top results
-- **Hypothetical Document Embeddings (HyDE)**: Improves retrieval for complex queries
+EduRAG processes textbooks, research papers, and lecture slides into a searchable knowledge base and answers questions with:
 
-### 🤖 Advanced AI Generation
-- **Strict Grounding**: Answers based only on retrieved evidence
-- **Citation Tracking**: Every claim is properly sourced [1], [2], etc.
-- **Hallucination Detection**: Identifies ungrounded statements automatically
+* **Grounded answers** — every claim cited with [1], [2] references to source documents
+* **Explainability** — shows which sources contributed most and which words in the answer are grounded in evidence
+* **Hallucination detection** — faithfulness scoring and token-level grounding heatmap
+* **Multimodal support** — diagrams and images described by a vision model and made searchable
 
-### 🔍 Comprehensive Explainability
-- **Evidence Attribution**: Shows which sources contributed most to the answer
-- **Token-Level Grounding**: Highlights grounded vs. ungrounded words in answers
-- **Source Consensus Analysis**: Detects conflicting information in sources
-- **Citation Validation**: Ensures all citations point to actual retrieved content
+Unlike basic RAG tutorials, this system uses a full production-grade retrieval pipeline and was formally evaluated and benchmarked.
 
-### 🖼️ Multimodal Support
-- **Visual Content Processing**: Extracts and describes diagrams, charts, and images
-- **Table Recognition**: Converts complex tables to searchable content
-- **Document Structure Preservation**: Maintains chapters, sections, and hierarchies
+---
 
-### 📊 Evaluation & Benchmarking
-- **Automated Ground Truth Generation**: Creates evaluation datasets from knowledge base
-- **Comprehensive Metrics**: BERTScore, ROUGE, Faithfulness, and Retrieval scores
-- **Citation Quality Analysis**: Measures precision and recall of citations
+## Benchmark Results
 
-## 🏗️ Architecture Overview
+Evaluated on 97 queries generated from real educational documents using DeepSeek R1 8B.
 
+### Retrieval Performance *(Hybrid BM25 + FAISS + RRF + Cross-Encoder Reranker)*
+| Metric | Score |
+| :--- | :--- |
+| MRR (Mean Reciprocal Rank) | 0.7784 |
+| Recall@1 | 0.7010 |
+| Recall@5 | 0.8763 |
+
+### Generation Accuracy
+| Metric | Score | Notes |
+| :--- | :--- | :--- |
+| BERTScore F1 | 0.8952 | Semantic similarity to ground truth |
+| ROUGE-L | 0.4699 | Structural overlap |
+| Token F1 | 0.4471 | Lexical overlap |
+| Exact Match | 0.0000 | Expected 0 for open-ended generation |
+
+### Trust & Hallucination Safeguards
+| Metric | Score | Notes |
+| :--- | :--- | :--- |
+| Faithfulness | 0.8924 | BERTScore vs best-matching retrieved chunk |
+| Citation Validity | 100% | All citations pointed to valid retrieved documents |
+| Token Grounding | 88.3% | Content words grounded in context (stop words excluded) |
+
+---
+
+## Architecture
+
+```text
+User Query
+    │
+    ▼
+HyDE Generation (DeepSeek R1 1.5B)
+    │
+    ▼
+┌─────────────────────────────────┐
+│         Hybrid Retrieval        │
+│  BM25 Sparse ──┐                │
+│                ├── RRF Fusion   │
+│  FAISS Dense ──┘                │
+└─────────────────────────────────┘
+    │
+    ▼
+Cross-Encoder Reranker (MS-MARCO)
+    │
+    ▼
+Strict Grounding Prompt → DeepSeek R1 8B
+    │
+    ▼
+┌─────────────────────────────────┐
+│        Explainability Layer     │
+│  • Evidence Attribution         │
+│  • Token Grounding Heatmap      │
+│  • Citation Validity Check      │
+│  • Source Consensus Detection   │
+└─────────────────────────────────┘
+    │
+    ▼
+Grounded Answer + Citations + Metrics
 ```
-User Query → HybridRetriever (BM25 + FAISS + RRF + Reranker + HyDE)
-     ↓
-Evidence Documents → Cross-Encoder Attribution & Token Grounding
-     ↓
-Strict Grounding Prompt → Ollama LLM (DeepSeek R1 8B)
-     ↓
-Answer + Citations + Explainability Metrics
-```
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- Python 3.10+
-- [Ollama](https://ollama.com/) installed and running
-- Git
+## Key Features
 
-### Installation
+### Retrieval
+* **Hybrid BM25 + FAISS** with Reciprocal Rank Fusion
+* **HyDE (Hypothetical Document Embeddings)** for complex queries
+* **MS-MARCO cross-encoder reranking** for precision
+
+### Generation
+* **Strict grounding prompt** — model instructed to only use retrieved context
+* **DeepSeek R1 8B via Ollama** (fully local, no API keys)
+* **Automatic DeepSeek think-tag cleaning**
+
+### Explainability
+* **Evidence attribution** — cross-encoder scores which chunks contributed most
+* **Token grounding heatmap** — highlights grounded vs ungrounded words
+* **Source consensus detection** — flags when retrieved sources contradict
+* **Citation validity** — verifies all [1], [2] references point to real chunks
+
+### Multimodal
+* **LLaVA-Phi3 vision model** describes diagrams and figures
+* **Perceptual hashing** to deduplicate similar images
+* **Visual content made searchable** alongside text
+
+### Evaluation
+* **Automated ground truth generation** using LLM-as-teacher
+* **BERTScore, ROUGE-L, MRR, Recall@K, Faithfulness, Token Grounding**
+* **Full benchmark report** saved to JSON
+
+---
+
+## Tech Stack
+
+`Python` `PyTorch` `HuggingFace Transformers` `LangChain` `FAISS` `BM25` `Streamlit` `Docling` `Ollama` `DeepSeek R1` `BGE Embeddings` `MS-MARCO Cross-Encoder` `NLTK`
+
+---
+
+## Installation
+
+**Prerequisites**
+* Python 3.10+
+* Ollama installed and running
+* 16GB RAM recommended
+
 ```bash
-# Clone the repository
-git clone https://github.com/Amalsreekumar1/Explainable-RAG-For-educational-Q-A.git
+git clone https://github.com/Amalsreekumar1/Explainable-RAG-For-educational-Q-A
 cd Explainable-RAG-For-educational-Q-A
-
-# Create virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Setup Models
+**Pull required Ollama models**
 ```bash
-# Pull required Ollama models
 ollama pull deepseek-r1:8b
 ollama pull deepseek-r1:1.5b
 ollama pull llava-phi3
 ```
 
-### Run the Application
-```bash
-# Start the Streamlit interface
-streamlit run app.py
-```
+---
 
-## 📚 Usage Guide
+## Usage
 
-### 1. Building Your Knowledge Base
-Place your educational materials (PDFs, DOCX, PPTX) in a folder and process them:
-
+**1. Build your knowledge base**
 ```bash
 python ingestion.py
 ```
+*(Or use the Upload Sources tab in the web interface.)*
 
-Or use the Upload Sources tab in the web interface.
+**2. Start the web app**
+```bash
+streamlit run app.py
+```
 
-### 2. Generating Evaluation Dataset
-Create ground truth QA pairs for benchmarking:
-
+**3. Generate evaluation dataset**
 ```bash
 python generate_ground_truth.py
 ```
 
-### 3. Running Evaluations
-Benchmark your system performance:
-
+**4. Run benchmark evaluation**
 ```bash
 python evaluation.py
 ```
 
-### 4. Command-Line Interface
-Test the system directly in terminal:
-
+**5. CLI mode**
 ```bash
 python main_rag.py
 ```
 
-## 🎛️ Web Interface Features
+---
 
-### 📚 QA Assistant Tab
-- Natural language questioning with citation-grounded answers
-- Real-time reliability scoring and metrics
-- Evidence attribution visualization
-- Token grounding heatmap
-- Visual content display
+## Project Structure
 
-### ⬆️ Upload Sources Tab
-- Multi-format document processing (PDF, DOCX, PPTX)
-- Automatic visual content extraction and description
-- Incremental knowledge base updates
-- Duplicate detection and prevention
-
-### 🔍 Knowledge Map Tab
-- Interactive exploration of processed documents
-- Section navigation and content preview
-- Visual content gallery
-- Direct image viewing
-
-## 📊 Performance Metrics
-
-EduRAG provides comprehensive evaluation including:
-
-| Category | Metric | Description |
-|----------|--------|-------------|
-| **Retrieval** | MRR, Recall@1, Recall@5 | How well sources are found |
-| **Generation** | BERTScore, ROUGE-L, F1 | Answer quality and accuracy |
-| **Grounding** | Faithfulness, Citation Validity | Trustworthiness measures |
-| **Explainability** | Token Grounding Ratio | How much of answer is verifiable |
-
-## 🔧 Configuration Options
-
-### Model Selection
-- Primary LLM: `deepseek-r1:8b` (high quality)
-- Fallback LLM: `deepseek-r1:1.5b` (resource efficient)
-- Vision Model: `llava-phi3` (image description)
-- Embeddings: `BAAI/bge-small-en-v1.5`
-
-### Adjustable Parameters
-- Chunk size and overlap
-- Retrieval depth (top-k)
-- HyDE activation
-- VLM processing for images
-
-## 🛡️ Privacy & Security
-
-- **Local Processing**: All computations happen on your machine
-- **No Cloud Dependencies**: Except for optional Ollama models
-- **Data Control**: Full ownership of your educational materials
-- **Secure Storage**: Knowledge base stored locally in CSV format
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgements
-
-- [Docling](https://ds4sd.github.io/docling/) for document parsing
-- [Ollama](https://ollama.com/) for local LLM inference
-- [LangChain](https://langchain.com/) for RAG framework
-- [Streamlit](https://streamlit.io/) for web interface
-- [Hugging Face](https://huggingface.co/) for embedding models
-
-## 📞 Support
-
-For issues, questions, or feature requests, please open an issue on GitHub.
+```text
+EduRAG/
+├── app.py                        # Streamlit web interface
+├── main_rag_withoutShap.py       # Core RAG pipeline
+├── explainability.py             # Citation grounding metrics
+├── evaluation.py                 # Benchmark evaluation
+├── ingestion_pdf.py              # Document ingestion (PDF/DOCX/PPTX)
+├── generate_ground_truth.py      # Automated QA pair generation
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-*EduRAG transforms educational materials into an interactive, explorable knowledge base with state-of-the-art AI capabilities while maintaining complete privacy and control over your data.*
+## Privacy
+
+All processing is fully local. No data leaves your machine. No API keys required.
+
+---
+
+## Acknowledgements
+
+* **Docling** — document parsing
+* **Ollama** — local LLM inference
+* **LangChain** — RAG framework
+* **Streamlit** — web interface
+* **BAAI/bge-small-en-v1.5** — dense embeddings
+* **cross-encoder/ms-marco-MiniLM-L-6-v2** — reranking
