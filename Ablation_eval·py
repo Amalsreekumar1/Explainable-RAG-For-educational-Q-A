@@ -1,15 +1,3 @@
-"""
-ablation_eval.py
-Run this to generate ablation study results for the paper.
-Produces three configurations:
-  1. BM25 only (no FAISS, no reranker, no HyDE)
-  2. Hybrid BM25+FAISS with RRF (no reranker, no HyDE)
-  3. Full system — already in final_benchmark_results.json
-
-Usage:
-    python ablation_eval.py
-"""
-
 import pandas as pd
 import numpy as np
 import logging
