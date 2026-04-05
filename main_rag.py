@@ -9,14 +9,6 @@ Enhanced Educational RAG with Always-On Attribution & Knowledge Map CLI
 - Citation Grounding Metrics
 - Source Consensus Detection
 - CLI Knowledge Map (Document Explorer)
-
-FIXES APPLIED:
-- Fix 1: TokenAttributor now filters stop words for academically honest grounding_ratio
-- Fix 2: clean_llm_output regex for DeepSeek <think> tags corrected
-- Fix 3: generate_hypothetical_document regex corrected
-- Fix 4: compute_faithfulness now scores per-chunk and takes max (avoids BERTScore truncation)
-- Fix 5: run_rag_pipeline accepts pre-initialized attributors to avoid reloading models per query
-- Fix 6: Unused imports removed
 """
 
 import os
@@ -439,7 +431,6 @@ class CitationMetrics:
             else:
                 invalid_citations.append(idx + 1)
 
-        # FIX: Return None when no citations present so evaluator can exclude from average
         metrics["valid_citation_rate"] = (
             len(valid_citations) / len(cited_indices)
             if cited_indices else None
@@ -511,13 +502,7 @@ class GenerationMetrics:
 
 # ==================== Faithfulness ====================
 def compute_faithfulness(answer: str, context_docs: List[Document]) -> float:
-    """
-    FIX: Score answer against each chunk individually and take max.
-    Previous approach concatenated all chunks into one string,
-    causing silent BERTScore truncation at 512 tokens.
-    Taking max is semantically correct — answer is faithful if it
-    matches at least one retrieved chunk well.
-    """
+
     if not context_docs:
         return 0.0
     try:
@@ -607,7 +592,6 @@ def combine_documents_for_prompt(docs: List[Document], max_chars: int = 2500) ->
 
 
 def clean_llm_output(raw_text: str) -> str:
-    """FIX: Correct DeepSeek <think> tag stripping using split instead of broken regex."""
     text = raw_text.strip()
     if "</think>" in text:
         text = text.split("</think>")[-1].strip()
@@ -641,8 +625,8 @@ def run_rag_pipeline(
     ground_truth_citations: Optional[List[int]] = None,
     llm=None,
     use_strict_prompt: bool = True,
-    evidence_attributor=None,   # FIX: accept pre-initialized to avoid reloading per query
-    token_attributor=None       # FIX: accept pre-initialized to avoid reloading per query
+    evidence_attributor=None,   
+    token_attributor=None       
 ) -> RAGResponse:
     """Full RAG pipeline with always-on attribution."""
     response = RAGResponse()
