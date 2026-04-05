@@ -1,14 +1,3 @@
-"""
-evaluation.py
-Comprehensive benchmarking for Educational RAG
-Connected directly to main_rag_withoutShap.py
-
-FIXES APPLIED:
-- Fix 1: HyDE now enabled during evaluation (was False before — methodological inconsistency)
-- Fix 2: EvidenceAttributor and TokenAttributor initialized once, reused across queries
-- Fix 3: Citation validity None handling — excludes no-citation cases from average
-- Fix 4: Sample size increased to 100 in generate_ground_truth.py recommendation
-"""
 import pandas as pd
 import numpy as np
 import logging
@@ -44,15 +33,11 @@ class RAGEvaluator:
         # Attribution tools
         self.citation_eval = CitationGroundingMetrics()
 
-        # FIX: Initialize attributors ONCE — reused across all queries
-        # Previously these were re-instantiated inside run_rag_pipeline every query,
         # loading the cross-encoder model from disk each time (slow and wasteful)
         logger.info("Loading Attribution Models (cross-encoder, token attributor)...")
         self.evidence_attributor = EvidenceAttributor()
         self.token_attributor = TokenAttributor()
 
-        # FIX: enable_hyde=True to match actual system behavior
-        # Previously enable_hyde=False — benchmark did not reflect real system
         logger.info("Initializing Hybrid Retriever Engine (HyDE enabled)...")
         self.retriever = get_hybrid_retriever_from_csv(
             self.csv_path, top_k=5, enable_hyde=True
@@ -80,7 +65,6 @@ class RAGEvaluator:
     def evaluate_single(self, query: str, ground_truth: str, target_chunk_id: str) -> Dict:
         """Runs a single query through the RAG and computes all metrics."""
 
-        # FIX: pass pre-initialized attributors to avoid model reloading per query
         result = run_rag_pipeline(
             query,
             self.retriever,
@@ -124,11 +108,10 @@ class RAGEvaluator:
         # Grounding metrics
         cit_metrics = self.citation_eval.evaluate_citations(prediction, context_docs)
 
-        # FIX: citation_validity from result.citation_metrics (uses corrected None handling)
         cit_rate = result.citation_metrics.get("valid_citation_rate")
 
         grounding = {
-            "citation_validity": cit_rate,   # May be None — handled in batch aggregation
+            "citation_validity": cit_rate,   
             "faithfulness": result.faithfulness,
             "token_grounding_ratio": result.token_attribution.get("grounding_ratio", 0)
         }
