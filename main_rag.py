@@ -9,13 +9,14 @@ Enhanced Educational RAG with Always-On Attribution & Knowledge Map CLI
 - Citation Grounding Metrics
 - Source Consensus Detection
 - CLI Knowledge Map (Document Explorer)
+
 """
 
 import os
 import re
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Self
 import numpy as np
 import pandas as pd
 import warnings
@@ -99,9 +100,16 @@ class DocumentReranker:
             inputs = self.tokenizer(pairs, padding=True, truncation=True,
                                     return_tensors="pt", max_length=512)
             scores = self.model(**inputs).logits.squeeze(-1)
-            scored = sorted(zip(scores.tolist(), docs), key=lambda x: x[0], reverse=True)
+            
+            # BOOST visual content scores
+            boosted_scores = []
+            for i, score in enumerate(scores.tolist()):
+                if docs[i].metadata.get('type') == 'visual_content':
+                    score += 0.15  # Boost visual content
+                boosted_scores.append(score)
+            
+            scored = sorted(zip(boosted_scores, docs), key=lambda x: x[0], reverse=True)
         return [d for s, d in scored[:top_n]]
-
 
 # ==================== STRICT GROUNDING PROMPT ====================
 STRICT_QA_PROMPT = PromptTemplate.from_template(
@@ -431,6 +439,7 @@ class CitationMetrics:
             else:
                 invalid_citations.append(idx + 1)
 
+        # FIX: Return None when no citations present so evaluator can exclude from average
         metrics["valid_citation_rate"] = (
             len(valid_citations) / len(cited_indices)
             if cited_indices else None
@@ -502,7 +511,13 @@ class GenerationMetrics:
 
 # ==================== Faithfulness ====================
 def compute_faithfulness(answer: str, context_docs: List[Document]) -> float:
-
+    """
+    FIX: Score answer against each chunk individually and take max.
+    Previous approach concatenated all chunks into one string,
+    causing silent BERTScore truncation at 512 tokens.
+    Taking max is semantically correct — answer is faithful if it
+    matches at least one retrieved chunk well.
+    """
     if not context_docs:
         return 0.0
     try:
@@ -524,6 +539,8 @@ class HybridRetriever(BaseRetriever, BaseModel):
     faiss: Any = None
     reranker: Any = None
     top_k: int = 5
+    enable_hyde: bool = True   # FIX: field added so HyDE is actually used
+    hyde_llm: Any = None       # FIX: field added to hold the HyDE language model
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -540,16 +557,29 @@ class HybridRetriever(BaseRetriever, BaseModel):
             object.__setattr__(self, 'faiss', faiss_obj)
 
     def _get_relevant_documents(self, query: str) -> List[Document]:
-        fetch_k = 20
-        bm25_scores = self.bm25.get_scores(query.lower().split())
+        fetch_k = 50
+        
+        # Expand query for better visual matching
+        visual_expansion = " diagram chart figure illustration visual graph table image"
+        expanded_query = query + visual_expansion
+        
+        # BM25 uses expanded query
+        bm25_scores = self.bm25.get_scores(expanded_query.lower().split())
         bm25_idx = np.argsort(bm25_scores)[-fetch_k:][::-1]
         bm25_docs = [self.documents[i] for i in bm25_idx if bm25_scores[i] > 0]
-
-        faiss_docs = self.faiss.similarity_search(query, k=fetch_k)
-
+        
+        # HyDE for dense retrieval
+        if self.enable_hyde and self.hyde_llm is not None:
+            hyde_query = generate_hypothetical_document(query, self.hyde_llm)
+        else:
+            hyde_query = query
+        
+        faiss_docs = self.faiss.similarity_search(hyde_query, k=fetch_k)
+        
         fused = rrf_fusion(bm25_docs, faiss_docs)
         final_docs = self.reranker.rerank(query, fused, top_n=self.top_k)
         return final_docs
+
 
 
 # ==================== Prompts & Utils ====================
@@ -592,6 +622,7 @@ def combine_documents_for_prompt(docs: List[Document], max_chars: int = 2500) ->
 
 
 def clean_llm_output(raw_text: str) -> str:
+    """FIX: Correct DeepSeek <think> tag stripping using split instead of broken regex."""
     text = raw_text.strip()
     if "</think>" in text:
         text = text.split("</think>")[-1].strip()
@@ -625,8 +656,8 @@ def run_rag_pipeline(
     ground_truth_citations: Optional[List[int]] = None,
     llm=None,
     use_strict_prompt: bool = True,
-    evidence_attributor=None,   
-    token_attributor=None       
+    evidence_attributor=None,   # FIX: accept pre-initialized to avoid reloading per query
+    token_attributor=None       # FIX: accept pre-initialized to avoid reloading per query
 ) -> RAGResponse:
     """Full RAG pipeline with always-on attribution."""
     response = RAGResponse()
@@ -869,6 +900,8 @@ def get_hybrid_retriever_from_csv(
     return HybridRetriever(
         documents=docs,
         top_k=top_k,
+        enable_hyde=enable_hyde,   # FIX: was not passed — HyDE was silently disabled
+        hyde_llm=hyde_llm,         # FIX: was not passed — LLM was initialized but discarded
     )
 
 
