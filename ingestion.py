@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import re
-from pypdf import PdfReader, PdfWriter  # For splitting PDFs, NOT text extraction
+import fitz  # PyMuPDF for PDF page chunking
 from PIL import Image
 import imagehash
 from tqdm import tqdm
@@ -203,26 +203,25 @@ class KnowledgeBaseWriter:
 
 # ==================== PDF Chunker ====================
 def split_pdf_to_chunks(source: str, output_dir: Path) -> List[Tuple[str, int]]:
-    """Split large PDF into page chunks using pypdf (page slicing only)."""
-    reader = PdfReader(source)
-    total_pages = len(reader.pages)
+    """Split large PDF into page chunks using fitz (page slicing only)."""
+    doc = fitz.open(source)
+    total_pages = doc.page_count
     chunks = []
 
     logger.info(f"Splitting {total_pages} pages into {CHUNK_SIZE}-page chunks...")
 
     for start in range(0, total_pages, CHUNK_SIZE):
         end = min(start + CHUNK_SIZE, total_pages)
-        writer = PdfWriter()
-        
-        for page_num in range(start, end):
-            writer.add_page(reader.pages[page_num])
-
         chunk_path = output_dir / f"chunk_{start + 1}_{end}.pdf"
-        with open(chunk_path, 'wb') as f:
-            writer.write(f)
+        chunk_doc = fitz.open()
+
+        chunk_doc.insert_pdf(doc, from_page=start, to_page=end - 1)
+        chunk_doc.save(chunk_path)
+        chunk_doc.close()
 
         chunks.append((str(chunk_path), start))
 
+    doc.close()
     return chunks
 
 
