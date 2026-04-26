@@ -40,8 +40,8 @@ Evaluated on 97 queries generated from real educational documents using DeepSeek
 | Metric | Score | Notes |
 | :--- | :--- | :--- |
 | Faithfulness | 0.8924 | BERTScore vs best-matching retrieved chunk |
-| Citation Validity | 100% | All citations pointed to valid retrieved documents |
-| Token Grounding | 88.3% | Content words grounded in context (stop words excluded) |
+| Citation Validity | 94% | All citations pointed to valid retrieved documents |
+| Token Grounding | 85.5% | Content words grounded in context (stop words excluded) |
 
 ---
 
